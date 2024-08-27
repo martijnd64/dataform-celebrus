@@ -1,0 +1,113 @@
+config {
+ type: "table",
+ description: "Celebrus configuration export.",
+ /*columns: {
+    uuid: 'The ID of the campaign.',
+    customer_id: 'The ID of the customer.',
+    clicks: 'The number of clicks.',
+    conversions: 'The number of conversions. This only includes conversion actions which include_in_conversions_metric attribute is set to true.',
+    conversions_value: 'The total value of conversions. This only includes conversion actions which include_in_conversions_metric attribute is set to true.',
+    cost: 'The sum of your cost-per-click (CPC) and cost-per-thousand impressions (CPM) costs during this period in euro.',
+    impressions: 'Count of how often your ad has appeared on a search results page or website on the Google Network.',
+    full_date: 'Date to which metrics apply. yyyy-MM-dd format, e.g., 2018-04-17.',
+    cmonth: 'Month to which metrics apply. yyyy-MM-dd format, e.g., 2018-04-01.',
+ },*/
+ uniqueKey: ["uuid"],
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily'],
+ bigquery: {
+   clusterBy: ["config"],
+ }
+}
+
+CREATE TEMPORARY FUNCTION XML_TO_JSON(xml STRING)
+RETURNS STRING
+  LANGUAGE js AS """
+  var data = fromXML(xml);
+  return JSON.stringify(data);
+"""
+OPTIONS(
+  library="gs://fromxml/from-xml.js"
+);
+
+WITH xml_data AS (
+  SELECT
+    "${constants.XML_AVERO_ACHMEA}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_AVERO_ACHMEA)}
+  UNION ALL
+  SELECT
+    "${constants.XML_CB_KLANTDOMEIN}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_CB_KLANTDOMEIN)}
+  UNION ALL
+  SELECT
+    "${constants.XML_CB_PARTICULIER}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_CB_PARTICULIER)}
+  UNION ALL
+  SELECT
+    "${constants.XML_CBA_ZAKELIJK}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_CBA_ZAKELIJK)}
+  UNION ALL
+  SELECT
+    "${constants.XML_GLOBAL}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_GLOBAL)}
+  UNION ALL
+  SELECT
+    "${constants.XML_MEDEWERKERS_DESKTOP}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_MEDEWERKERS_DESKTOP)}
+  UNION ALL
+  SELECT
+    "${constants.XML_MOBIELE_APPS}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_MOBIELE_APPS)}
+  UNION ALL
+  SELECT
+    "${constants.XML_ROADGUARD}" AS config,
+    xml_to_json(raw_data) as xml_string
+  FROM
+    ${ref(constants.XML_PREFIX + constants.XML_ROADGUARD)}
+)
+SELECT
+  config,
+  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.uuid') AS uuid,
+  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.name') AS name,
+  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.eventType') AS eventType,
+  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.partition.partitionType') AS partitionType,
+  (CASE
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.name') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.name')
+  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].name')
+  END) AS nodeName,
+  (CASE
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventSource') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventSource')
+  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].eventSource')
+  END) AS nodeEventSource,
+  (CASE
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventType') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventType')
+  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].eventType')
+  END) AS nodeEventType,
+  (CASE
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName')
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].attributePathName') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].attributePathName')
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.attributePathName') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.attributePathName')
+  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].attributePathName')
+  END) AS nodeMatchAttribute,
+  (CASE
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator')
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].operator') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].operator')
+  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.operator') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.operator')
+  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].operator')
+  END) AS nodeMatchOperator,
+FROM
+  xml_data
