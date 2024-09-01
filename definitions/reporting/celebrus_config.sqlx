@@ -1,4 +1,5 @@
 config {
+ name: 'celebrus_config',
  type: "table",
  description: "Celebrus configuration export.",
  /*columns: {
@@ -20,62 +21,52 @@ config {
  }
 }
 
-CREATE TEMPORARY FUNCTION XML_TO_JSON(xml STRING)
-RETURNS STRING
-  LANGUAGE js AS """
-  var data = fromXML(xml);
-  return JSON.stringify(data);
-"""
-OPTIONS(
-  library="gs://fromxml/from-xml.js"
-);
-
 WITH xml_data AS (
   SELECT
     "${constants.XML_AVERO_ACHMEA}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_AVERO_ACHMEA)}
   UNION ALL
   SELECT
     "${constants.XML_CB_KLANTDOMEIN}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_CB_KLANTDOMEIN)}
   UNION ALL
   SELECT
     "${constants.XML_CB_PARTICULIER}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_CB_PARTICULIER)}
   UNION ALL
   SELECT
     "${constants.XML_CBA_ZAKELIJK}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_CBA_ZAKELIJK)}
   UNION ALL
   SELECT
     "${constants.XML_GLOBAL}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_GLOBAL)}
   UNION ALL
   SELECT
     "${constants.XML_MEDEWERKERS_DESKTOP}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_MEDEWERKERS_DESKTOP)}
   UNION ALL
   SELECT
     "${constants.XML_MOBIELE_APPS}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_MOBIELE_APPS)}
   UNION ALL
   SELECT
     "${constants.XML_ROADGUARD}" AS config,
-    xml_to_json(raw_data) as xml_string
+    cb_functions.XML_TO_JSON(raw_data) as xml_string
   FROM
     ${ref(constants.XML_PREFIX + constants.XML_ROADGUARD)}
 )
