@@ -72,33 +72,82 @@ WITH xml_data AS (
 )
 SELECT
   config,
-  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.uuid') AS uuid,
-  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.name') AS name,
-  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.eventType') AS eventType,
-  JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.partition.partitionType') AS partitionType,
-  (CASE
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.name') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.name')
-  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].name')
-  END) AS nodeName,
-  (CASE
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventSource') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventSource')
-  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].eventSource')
-  END) AS nodeEventSource,
-  (CASE
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventType') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.eventType')
-  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].eventType')
-  END) AS nodeEventType,
-  (CASE
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName')
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].attributePathName') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].attributePathName')
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.attributePathName') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.attributePathName')
-  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].attributePathName')
-  END) AS nodeMatchAttribute,
-  (CASE
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator')
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].operator') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].operator')
-  WHEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.operator') IS NOT NULL THEN JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.operator')
-  ELSE JSON_EXTRACT_SCALAR(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].operator')
-  END) AS nodeMatchOperator,
+  JSON_VALUE(xml_string, '$.processing.graph.uuid') AS uuid,
+  JSON_VALUE(xml_string, '$.processing.graph.name') AS name,
+  JSON_VALUE(xml_string, '$.processing.graph.eventType') AS eventType,
+  JSON_VALUE(xml_string, '$.processing.graph.partition.partitionType') AS partitionType,
+  -- Nodes
+  /*JSON_STRIP_NULLS(JSON_ARRAY(
+  JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.name'),
+  JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].name'),
+  JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[1].name'),
+  JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[2].name'),
+  JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[3].name'),
+  JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[4].name'),
+  JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[5].name')
+  )) AS nodeNames,*/
+  /*CASE
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.name') IS NOT NULL THEN ARRAY( SELECT JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.name'))
+    ELSE (
+  SELECT
+    ARRAY_AGG(JSON_VALUE(nodeNamesArr, '$.name'))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) AS nodeNamesArr)
+  END
+    AS nodeNames,*/
+  ${helpers.getNode('name')},
+  ${helpers.getNode('eventSource')},
+  ${helpers.getNode('eventType')},
+
+  CASE
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName') IS NOT NULL THEN ARRAY( SELECT JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName'))
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].attributePathName') IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(JSON_VALUE(nodeArr, '$.attributePathName'))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint')) AS nodeArr)
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.attributePathName') IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.attributePathName'), ''))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) AS nodeArr)
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].attributePathName') IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(IFNULL(JSON_VALUE(nodeArr, '$.attributePathName'), ''))
+  FROM
+    UNNEST(
+      (SELECT
+        JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint'))
+    ) AS nodeArr)
+  END
+    AS nodeMatchAttribute,
+  /*CASE
+  WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator') IS NOT NULL THEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator')
+  WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].operator') IS NOT NULL THEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].operator')
+  WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.operator') IS NOT NULL THEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.operator')
+  ELSE JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].operator')
+  END AS nodeMatchOperator,*/
+  CASE
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator') IS NOT NULL THEN ARRAY( SELECT JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator'))
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint[0].operator') IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(JSON_VALUE(nodeArr, '$.operator'))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint')) AS nodeArr)
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint.operator') IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.operator'), ''))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) AS nodeArr)
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].operator') IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(IFNULL(JSON_VALUE(nodeArr, '$.operator'), ''))
+  FROM
+    UNNEST(
+      (SELECT
+        JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint'))
+    ) AS nodeArr)
+  END
+    AS nodeMatchOperator,
 FROM
   xml_data
