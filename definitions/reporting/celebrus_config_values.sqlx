@@ -2,7 +2,6 @@ config {
  name: 'celebrus_config_values',
  type: "table",
  description: "Celebrus configuration export.",
- uniqueKey: ["nodeUuid"],
  schema: "dataform_reporting",
  tags: ['celebrus', 'daily']
 }
