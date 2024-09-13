@@ -18,3 +18,4 @@ SELECT
   JSON_VALUE(xml_string, '$.processing.graph.partition.partitionType') AS partitionType,
 FROM
   ${ref('celebrus_config_json')}
+WHERE JSON_VALUE(xml_string, '$.processing.graph.uuid') IS NOT NULL
