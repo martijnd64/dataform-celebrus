@@ -1,0 +1,30 @@
+config {
+ name: 'celebrus_config_json',
+ type: "table",
+ description: "Celebrus configuration export.",
+ /*columns: {
+    uuid: 'The ID of the campaign.',
+    customer_id: 'The ID of the customer.',
+    clicks: 'The number of clicks.',
+    conversions: 'The number of conversions. This only includes conversion actions which include_in_conversions_metric attribute is set to true.',
+    conversions_value: 'The total value of conversions. This only includes conversion actions which include_in_conversions_metric attribute is set to true.',
+    cost: 'The sum of your cost-per-click (CPC) and cost-per-thousand impressions (CPM) costs during this period in euro.',
+    impressions: 'Count of how often your ad has appeared on a search results page or website on the Google Network.',
+    full_date: 'Date to which metrics apply. yyyy-MM-dd format, e.g., 2018-04-17.',
+    cmonth: 'Month to which metrics apply. yyyy-MM-dd format, e.g., 2018-04-01.',
+ },*/
+ schema: "dataform_sources",
+ tags: ['celebrus', 'daily'],
+ bigquery: {
+   clusterBy: ["config"],
+ }
+}
+
+${helpers.getXmlData('AVERO_ACHMEA', false)}
+${helpers.getXmlData('CB_KLANTDOMEIN')}
+${helpers.getXmlData('CB_PARTICULIER')}
+${helpers.getXmlData('CBA_ZAKELIJK')}
+${helpers.getXmlData('GLOBAL')}
+${helpers.getXmlData('MEDEWERKERS_DESKTOP')}
+${helpers.getXmlData('MOBIELE_APPS')}
+${helpers.getXmlData('ROADGUARD')}

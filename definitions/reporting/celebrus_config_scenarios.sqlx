@@ -1,0 +1,20 @@
+config {
+ name: 'celebrus_config_scenarios',
+ type: "table",
+ description: "Celebrus configuration export.",
+ uniqueKey: ["uuid"],
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily'],
+ bigquery: {
+   clusterBy: ["config"],
+ }
+}
+
+SELECT
+  config,
+  JSON_VALUE(xml_string, '$.processing.graph.uuid') AS uuid,
+  JSON_VALUE(xml_string, '$.processing.graph.name') AS name,
+  JSON_VALUE(xml_string, '$.processing.graph.eventType') AS eventType,
+  JSON_VALUE(xml_string, '$.processing.graph.partition.partitionType') AS partitionType,
+FROM
+  ${ref('celebrus_config_json')}

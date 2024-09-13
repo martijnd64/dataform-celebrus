@@ -1,0 +1,108 @@
+config {
+ name: 'celebrus_config_values',
+ type: "table",
+ description: "Celebrus configuration export.",
+ uniqueKey: ["nodeUuid"],
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily']
+}
+
+WITH prep AS (
+  
+  /* 1 NO NESTING */
+  SELECT
+  CASE
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.value.""') IS NOT NULL 
+        THEN ARRAY( 
+            SELECT CONCAT(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.uuid'), '|', 
+            IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.connective'), ''), '|' ,
+            JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName'), '|' ,
+            JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator'), '|',
+            JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.value.""')))
+  END AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+  
+  /* 2 NESTING ON valueconstraint */
+  UNION ALL 
+  SELECT
+  CASE
+    WHEN ARRAY_LENGTH(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint')) IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(CONCAT(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.uuid'), '|', IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.connective'), ''), '|', JSON_VALUE(nodeArr, '$.attributePathName'), '|', JSON_VALUE(nodeArr, '$.operator'), '|', IFNULL(JSON_VALUE(nodeArr, '$.value.""'), '')))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint')) AS nodeArr)
+  END AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+  
+  /* 3 NESTING ON matchNode */
+  UNION ALL
+  SELECT
+  CASE
+    WHEN ARRAY_LENGTH(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) IS NOT NULL AND ARRAY_LENGTH(JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint.value')) IS NULL THEN (
+  SELECT
+    ARRAY_AGG(CONCAT(JSON_VALUE(nodeArr, '$.uuid'), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.connective'), ''), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.attributePathName'), ''), '|' ,IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.operator'), ''), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.value.""'), '')))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) AS nodeArr)
+  END AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+
+), prepRest AS (
+  
+  /* 4 NESTING ON matchNode, valueconstraint */
+  SELECT
+  CASE
+    WHEN ARRAY_LENGTH(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) IS NOT NULL 
+    AND ARRAY_LENGTH(JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint')) IS NOT NULL
+    THEN (
+  SELECT
+    ARRAY_AGG(CONCAT(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].uuid'), '|', IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.connective'), ''), '|' ,IFNULL(JSON_VALUE(nodeArr, '$.attributePathName'), ''), '|' ,IFNULL(JSON_VALUE(nodeArr, '$.operator'), ''), '|' ,IFNULL(JSON_QUERY(nodeArr, '$.value'), '')))
+  FROM
+    UNNEST(
+      (SELECT
+        JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint'))
+    ) AS nodeArr)
+  END AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+
+), dataPrep AS (
+SELECT nodeAttributePathName
+FROM prep, UNNEST (nodeAttributePathName) as nodeAttributePathName
+), resultPrep AS (
+SELECT 
+  split(nodeAttributePathName, '|')[offset(0)] as nodeUuid,
+  split(nodeAttributePathName, '|')[offset(1)] as nodeConnective,
+  split(nodeAttributePathName, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeAttributePathName, '|')[offset(3)] as nodeOperator,
+  split(nodeAttributePathName, '|')[offset(4)] as nodeValue
+FROM dataPrep
+), dataPrepRest AS (
+SELECT nodeAttributePathName
+FROM prepRest, UNNEST (nodeAttributePathName) as nodeAttributePathName
+), splitten AS (
+SELECT 
+  split(nodeAttributePathName, '|')[offset(0)] as nodeUuid,
+  split(nodeAttributePathName, '|')[offset(1)] as nodeConnective,
+  split(nodeAttributePathName, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeAttributePathName, '|')[offset(3)] as nodeOperator,
+  split(nodeAttributePathName, '|')[offset(4)] as nodeValue
+FROM dataPrepRest
+), flatten AS (
+SELECT
+    nodeUuid, nodeConnective, nodeAttributePathName, nodeOperator,
+    CASE
+    WHEN ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NOT NULL THEN 
+    (SELECT ARRAY_AGG(JSON_VALUE(nodeValues, '$.""')) FROM UNNEST((SELECT JSON_QUERY_ARRAY(nodeValue, '$'))) AS nodeValues)
+    WHEN JSON_VALUE(nodeValue, '$.""') IS NOT NULL THEN ARRAY(SELECT JSON_VALUE(nodeValue, '$.""'))
+    ELSE ARRAY(SELECT nodeValue)
+    END AS nodeValue
+FROM splitten
+), resultPrepRest AS (
+SELECT nodeUuid, nodeConnective, nodeAttributePathName, nodeOperator, nodeValues FROM flatten, UNNEST(nodeValue) AS nodeValues
+)
+SELECT * FROM resultPrep
+UNION ALL
+SELECT * FROM resultPrepRest

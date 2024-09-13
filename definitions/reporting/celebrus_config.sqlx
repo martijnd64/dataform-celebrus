@@ -65,13 +65,16 @@ SELECT
         JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint'))
     ) AS nodeArr)
    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode[0].match.constraints.valueconstraint[0].value[0].""') IS NOT NULL THEN (
-  SELECT
-    ARRAY_AGG(IFNULL(JSON_QUERY(nodeArr, '$.value'), ''))
-  FROM
-    UNNEST(
-      (SELECT
-        JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint'))
-    ) AS nodeArr)
+      SELECT
+        ARRAY_AGG(JSON_QUERY(nodeArr, '$.""'))
+      FROM
+        UNNEST ( (
+          SELECT
+            ARRAY_CONCAT_AGG(JSON_QUERY_ARRAY(nodeArr, '$.value'))
+          FROM
+            UNNEST( (
+              SELECT
+                JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint')) ) AS nodeArr) ) AS nodeArr )
   END
     AS nodeMatchOperator,
 FROM

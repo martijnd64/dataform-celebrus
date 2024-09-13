@@ -1,0 +1,31 @@
+config {
+ name: 'celebrus_config_nodes',
+ type: "table",
+ description: "Celebrus configuration export.",
+ uniqueKey: ["uuid", "nodeUuid"],
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily']
+}
+
+WITH prep AS (
+  SELECT
+  JSON_VALUE(xml_string, '$.processing.graph.uuid') AS uuid,
+  ${helpers.getNode('uuid')},
+  ${helpers.getNode('name')},
+  ${helpers.getNode('eventSource')},
+  ${helpers.getNode('eventType')},
+  FROM
+    ${ref('celebrus_config_json')}
+)
+SELECT 
+  uuid,
+  nodeUuid,
+  nodeName,
+  nodeEventSource,
+  nodeEventType
+FROM prep,
+UNNEST(nodeUuid) AS nodeUuid WITH OFFSET AS pos1,
+UNNEST(nodeName) AS nodeName WITH OFFSET AS pos2,
+UNNEST(nodeEventSource) AS nodeEventSource WITH OFFSET AS pos3,
+UNNEST(nodeEventType) AS nodeEventType WITH OFFSET AS pos4
+WHERE pos1 = pos2 AND pos2 = pos3 AND pos3 = pos4
