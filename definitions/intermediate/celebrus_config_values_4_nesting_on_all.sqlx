@@ -1,0 +1,75 @@
+config {
+ name: 'celebrus_config_values_4_nesting_on_all',
+ type: "table",
+ description: "Celebrus configuration export.",
+ schema: "dataform_intermediate",
+ tags: ['celebrus', 'daily']
+}
+
+/* 4 NESTING ON matchNode, valueconstraint and (optional) on value */
+WITH prep AS (
+  SELECT
+  (SELECT
+      ARRAY_AGG(CONCAT(JSON_VALUE(nodeArr, '$.uuid'), '|', JSON_VALUE(nodeArr, '$.match.constraints.connective'), '|',JSON_QUERY(nodeArr, '$.match.constraints.valueconstraint')))
+    FROM
+      UNNEST(
+        (SELECT
+          JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$'))
+      ) AS nodeArr) as nodeArr
+  FROM ${ref('celebrus_config_json')}
+), flatten AS (
+SELECT nodeArr
+FROM prep, UNNEST (nodeArr) as nodeArr
+), splitten AS (
+SELECT 
+  split(nodeArr, '|')[offset(0)] as nodeUuid,
+  split(nodeArr, '|')[offset(1)] as nodeConnective,
+  split(nodeArr, '|')[offset(2)] as nodeValueArr,
+FROM flatten
+), prep2 AS (
+  SELECT
+  (SELECT
+      ARRAY_AGG(CONCAT(nodeUuid, '|', nodeConnective, '|', JSON_VALUE(nodeArr, '$.attributePathName'), '|', JSON_VALUE(nodeArr, '$.operator'), '|', IFNULL(JSON_VALUE(nodeArr, '$.value.""'), JSON_QUERY(nodeArr, '$.value'))))
+    FROM
+      UNNEST(
+        (SELECT
+          JSON_QUERY_ARRAY(nodeValueArr, '$'))
+      ) AS nodeArr) as nodeArr
+  FROM splitten
+), flatten2 AS (
+SELECT nodeArr
+FROM prep2, UNNEST (nodeArr) as nodeArr
+), splitten2 AS (
+SELECT 
+  split(nodeArr, '|')[offset(0)] as nodeUuid,
+  split(nodeArr, '|')[offset(1)] as nodeConnective,
+  split(nodeArr, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeArr, '|')[offset(3)] as nodeOperator,
+  split(nodeArr, '|')[offset(4)] as nodeValue,
+FROM flatten2
+), prep3 AS (
+SELECT
+  (SELECT
+      ARRAY_AGG(CONCAT(nodeUuid, '|', nodeConnective, '|', nodeAttributePathName, '|', nodeOperator, '|', JSON_VALUE(nodeArr, '$.""')))
+    FROM
+      UNNEST(
+        (SELECT
+          JSON_QUERY_ARRAY(nodeValue, '$'))
+      ) AS nodeArr) as nodeArr
+  FROM splitten2
+  WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NOT NULL
+), flatten3 AS (
+SELECT nodeArr
+FROM prep3, UNNEST (nodeArr) as nodeArr
+), splitten3 AS (
+  SELECT 
+  split(nodeArr, '|')[offset(0)] as nodeUuid,
+  split(nodeArr, '|')[offset(1)] as nodeConnective,
+  split(nodeArr, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeArr, '|')[offset(3)] as nodeOperator,
+  split(nodeArr, '|')[offset(4)] as nodeValue,
+FROM flatten3
+)
+SELECT * FROM splitten2 WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NULL
+UNION ALL
+SELECT * FROM splitten3

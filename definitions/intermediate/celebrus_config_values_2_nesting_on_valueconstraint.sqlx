@@ -1,0 +1,34 @@
+config {
+ name: 'celebrus_config_values_2_nesting_on_valueconstraint',
+ type: "table",
+ description: "Celebrus configuration export.",
+ schema: "dataform_intermediate",
+ tags: ['celebrus', 'daily']
+}
+
+/* 2 NESTING ON valueconstraint - CAN BE ON value */
+WITH prep AS (
+  SELECT
+ (
+  SELECT
+    ARRAY_AGG(CONCAT(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.uuid'), '|', IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.connective'), ''), '|', JSON_VALUE(nodeArr, '$.attributePathName'), '|', JSON_VALUE(nodeArr, '$.operator'), '|', IFNULL(JSON_VALUE(nodeArr, '$.value.""'), JSON_QUERY(nodeArr, '$.value'))))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint')) AS nodeArr)
+  AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+
+), dataPrep AS (
+SELECT nodeAttributePathName
+FROM prep, UNNEST (nodeAttributePathName) as nodeAttributePathName
+), resultPrep AS (
+SELECT 
+  split(nodeAttributePathName, '|')[offset(0)] as nodeUuid,
+  split(nodeAttributePathName, '|')[offset(1)] as nodeConnective,
+  split(nodeAttributePathName, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeAttributePathName, '|')[offset(3)] as nodeOperator,
+  split(nodeAttributePathName, '|')[offset(4)] as nodeValue
+FROM dataPrep)
+SELECT *
+FROM resultPrep
+WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NULL

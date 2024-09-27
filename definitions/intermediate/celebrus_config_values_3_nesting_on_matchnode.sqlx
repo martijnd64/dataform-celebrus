@@ -1,0 +1,41 @@
+config {
+ name: 'celebrus_config_values_3_nesting_on_matchnode',
+ type: "table",
+ description: "Celebrus configuration export.",
+ schema: "dataform_intermediate",
+ tags: ['celebrus', 'daily']
+}
+
+/* 3 NESTING ON matchNode - CAN BE ON valuecontstraint and value */
+WITH prep AS (
+  SELECT
+ (
+  SELECT
+    ARRAY_AGG(CONCAT(JSON_VALUE(nodeArr, '$.uuid'), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.connective'), ''), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.attributePathName'), JSON_QUERY(nodeArr, '$.match.constraints.valueconstraint')), '|' ,IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.operator'), JSON_QUERY(nodeArr, '$.match.constraints.valueconstraint')), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.value.""'), JSON_QUERY(nodeArr, '$.match.constraints.valueconstraint.value'))))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) AS nodeArr)
+  AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+
+), dataPrep AS (
+SELECT nodeAttributePathName
+FROM prep, UNNEST (nodeAttributePathName) as nodeAttributePathName
+), resultPrep AS (
+SELECT 
+  split(nodeAttributePathName, '|')[offset(0)] as nodeUuid,
+  split(nodeAttributePathName, '|')[offset(1)] as nodeConnective,
+  split(nodeAttributePathName, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeAttributePathName, '|')[offset(3)] as nodeOperator,
+  split(nodeAttributePathName, '|')[offset(4)] as nodeValue
+FROM dataPrep)
+SELECT *
+FROM resultPrep
+WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NULL
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeOperator, '$')) IS NULL
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeAttributePathName, '$')) IS NULL
+AND (nodeValue IS NOT NULL AND nodeValue != ''
+    OR nodeOperator IS NOT NULL AND nodeOperator != ''
+    OR nodeAttributePathName IS NOT NULL AND nodeAttributePathName != ''
+    OR nodeConnective IS NOT NULL AND nodeConnective != ''
+    OR nodeUuid IS NOT NULL AND nodeUuid != '')

@@ -1,0 +1,141 @@
+config {
+ name: 'celebrus_config_values2',
+ type: "table",
+ description: "Celebrus configuration export.",
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily']
+}
+
+WITH prep AS (
+  
+  /* 1 NO NESTING */
+  SELECT
+  CASE
+    WHEN JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.value.""') IS NOT NULL 
+        THEN ARRAY( 
+            SELECT CONCAT(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.uuid'), '|', 
+            IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.connective'), ''), '|' ,
+            JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName'), '|' ,
+            JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator'), '|',
+            JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.value.""')))
+  END AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+  
+  /* 2 NESTING ON valueconstraint */
+  UNION ALL 
+  SELECT
+  CASE
+    WHEN ARRAY_LENGTH(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint')) IS NOT NULL THEN (
+  SELECT
+    ARRAY_AGG(CONCAT(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.uuid'), '|', IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.connective'), ''), '|', JSON_VALUE(nodeArr, '$.attributePathName'), '|', JSON_VALUE(nodeArr, '$.operator'), '|', IFNULL(JSON_VALUE(nodeArr, '$.value.""'), '')))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint')) AS nodeArr)
+  END AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+  
+  /* 3 NESTING ON matchNode */
+  UNION ALL
+  SELECT
+  CASE
+    WHEN ARRAY_LENGTH(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) IS NOT NULL AND ARRAY_LENGTH(JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint')) IS NULL THEN (
+  SELECT
+    ARRAY_AGG(CONCAT(JSON_VALUE(nodeArr, '$.uuid'), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.connective'), ''), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.attributePathName'), ''), '|' ,IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.operator'), ''), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.constraints.valueconstraint.value.""'), '')))
+  FROM
+    UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) AS nodeArr)
+  END AS nodeAttributePathName,
+  FROM
+    ${ref('celebrus_config_json')}
+
+), prepRest AS (
+  
+  /* 4 NESTING ON matchNode, valueconstraint and (optional) on value */
+  SELECT
+  CASE
+    WHEN ARRAY_LENGTH(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) IS NOT NULL 
+    AND ARRAY_LENGTH(JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$[0].match.constraints.valueconstraint')) IS NOT NULL
+    THEN (
+  SELECT
+      ARRAY_AGG(CONCAT(JSON_VALUE(nodeArr, '$.uuid'), '|', JSON_VALUE(nodeArr, '$.match.constraints.connective'), '|',JSON_QUERY(nodeArr, '$.match.constraints.valueconstraint')))
+    FROM
+      UNNEST(
+        (SELECT
+          JSON_QUERY_ARRAY(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '$'))
+      ) AS nodeArr)
+  END AS nodeArr,
+  FROM
+    ${ref('celebrus_config_json')}
+
+), dataPrep AS (
+    /*STEPS 1 to 3 */
+SELECT nodeAttributePathName
+FROM prep, UNNEST (nodeAttributePathName) as nodeAttributePathName
+), resultPrep AS (
+SELECT 
+  split(nodeAttributePathName, '|')[offset(0)] as nodeUuid,
+  split(nodeAttributePathName, '|')[offset(1)] as nodeConnective,
+  split(nodeAttributePathName, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeAttributePathName, '|')[offset(3)] as nodeOperator,
+  split(nodeAttributePathName, '|')[offset(4)] as nodeValue
+FROM dataPrep
+), dataPrepRest AS (
+    /*STEP 4 */
+SELECT nodeArr
+FROM prepRest, UNNEST (nodeArr) as nodeArr
+), splitten AS (
+SELECT 
+  split(nodeArr, '|')[offset(0)] as nodeUuid,
+  split(nodeArr, '|')[offset(1)] as nodeConnective,
+  split(nodeArr, '|')[offset(2)] as nodeValueArr,
+FROM dataPrepRest
+), flatten AS (
+SELECT
+  (SELECT
+      ARRAY_AGG(CONCAT(nodeUuid, '|', nodeConnective, '|', JSON_VALUE(nodeArr, '$.attributePathName'), '|', JSON_VALUE(nodeArr, '$.operator'), '|', IFNULL(JSON_VALUE(nodeArr, '$.value.""'), JSON_QUERY(nodeArr, '$.value'))))
+    FROM
+      UNNEST(
+        (SELECT
+          JSON_QUERY_ARRAY(nodeValueArr, '$'))
+      ) AS nodeArr) as nodeArr
+  FROM splitten
+  -- HIER
+), flatten2 AS (
+SELECT nodeArr
+FROM flatten, UNNEST (nodeArr) as nodeArr
+), splitten2 AS (
+SELECT 
+  split(nodeArr, '|')[offset(0)] as nodeUuid,
+  split(nodeArr, '|')[offset(1)] as nodeConnective,
+  split(nodeArr, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeArr, '|')[offset(3)] as nodeOperator,
+  split(nodeArr, '|')[offset(4)] as nodeValue,
+FROM flatten2
+), prep3 AS (
+SELECT
+  (SELECT
+      ARRAY_AGG(CONCAT(nodeUuid, '|', nodeConnective, '|', nodeAttributePathName, '|', nodeOperator, '|', JSON_VALUE(nodeArr, '$.""')))
+    FROM
+      UNNEST(
+        (SELECT
+          JSON_QUERY_ARRAY(nodeValue, '$'))
+      ) AS nodeArr) as nodeArr
+  FROM splitten2
+  WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NOT NULL
+), flatten3 AS (
+SELECT nodeArr
+FROM prep3, UNNEST (nodeArr) as nodeArr
+), splitten3 AS (
+  SELECT 
+  split(nodeArr, '|')[offset(0)] as nodeUuid,
+  split(nodeArr, '|')[offset(1)] as nodeConnective,
+  split(nodeArr, '|')[offset(2)] as nodeAttributePathName,
+  split(nodeArr, '|')[offset(3)] as nodeOperator,
+  split(nodeArr, '|')[offset(4)] as nodeValue,
+FROM flatten3
+) /*COMBINE */
+SELECT * FROM resultPrep
+UNION ALL
+SELECT * FROM splitten2 WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NULL
+UNION ALL
+SELECT * FROM splitten3

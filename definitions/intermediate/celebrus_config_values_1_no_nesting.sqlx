@@ -1,0 +1,39 @@
+config {
+ name: 'celebrus_config_values_1_no_nesting',
+ type: "table",
+ description: "Celebrus configuration export.",
+ schema: "dataform_intermediate",
+ tags: ['celebrus', 'daily']
+}
+
+/* 1 NO NESTING - CAN BE ON matchNode, valuecontstraint and value */
+WITH prep AS (
+  SELECT
+    IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.uuid'), IFNULL(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '')) AS nodeUuid, 
+    IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.connective'), IFNULL(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode'), '')) AS nodeConnective,
+    IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.attributePathName'), IFNULL(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint'), '')) AS nodeAttributePathName,
+    IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.operator'), IFNULL(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint'), '')) AS nodeOperator,
+    IFNULL(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.value.""'), IFNULL(JSON_QUERY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.constraints.valueconstraint.value'), '')) AS nodeValue
+  FROM
+    ${ref('celebrus_config_json')}
+), filterResults AS (
+SELECT *
+FROM prep
+WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NULL
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeOperator, '$')) IS NULL 
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeAttributePathName, '$')) IS NULL
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeConnective, '$')) IS NULL
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeUuid, '$')) IS NULL
+AND (nodeValue IS NOT NULL AND nodeValue != ''
+    OR nodeOperator IS NOT NULL AND nodeOperator != ''
+    OR nodeAttributePathName IS NOT NULL AND nodeAttributePathName != ''
+    OR nodeConnective IS NOT NULL AND nodeConnective != ''
+    OR nodeUuid IS NOT NULL AND nodeUuid != '')
+)
+SELECT
+  nodeUuid,
+  IF(SAFE.PARSE_JSON(nodeConnective) IS NOT NULL, '', nodeConnective) AS nodeConnective,
+  IF(SAFE.PARSE_JSON(nodeAttributePathName) IS NOT NULL, '', nodeAttributePathName) AS nodeAttributePathName,
+  IF(SAFE.PARSE_JSON(nodeOperator) IS NOT NULL, '', nodeOperator) AS nodeOperator,
+  nodeValue
+FROM filterResults
