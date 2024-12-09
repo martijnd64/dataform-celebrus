@@ -55,4 +55,8 @@ const getNestedNode = (
     AS node${nodeField.charAt(0).toUpperCase() + nodeField.slice(1)}`;
 };
 
-module.exports = { getXmlData, getNode, getNestedNode };
+const deleteQuery = (name) => {
+  return `DELETE FROM ${'`'}${constants.DATABASE}.${constants.DATASET}.${constants.XML_PREFIX + constants["XML_"+name]}${'`'} WHERE raw_data IS NOT NULL;`
+};
+
+module.exports = { getXmlData, getNode, getNestedNode, deleteQuery};

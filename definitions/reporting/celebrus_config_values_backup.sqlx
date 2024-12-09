@@ -3,7 +3,7 @@ config {
  type: "table",
  description: "Celebrus configuration export.",
  schema: "dataform_reporting",
- tags: ['celebrus', 'daily']
+ tags: ['celebrus']
 }
 
 WITH prep AS (

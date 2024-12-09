@@ -4,7 +4,7 @@ config {
  description: "Celebrus configuration export.",
  uniqueKey: ["nodeUuid"],
  schema: "dataform_reporting",
- tags: ['celebrus', 'daily']
+ tags: ['celebrus']
 }
 
 WITH prep AS (
