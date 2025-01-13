@@ -1,0 +1,66 @@
+config {
+ name: 'celebrus_config_values_changes',
+ type: "incremental",
+ description: "Celebrus configuration export.",
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily'],
+ //dependencies: ["celebrus_config_values"]
+}
+
+with comparison as (
+select
+  coalesce(curr.nodeUuid, prev.nodeUuid) as nodeUuid,
+  case 
+    when curr.nodeUuid is null then 'DELETED'
+    when prev.nodeUuid is null then 'NEW'
+    else 'UNCHANGED'
+  end as nodeUuid_status,
+  prev.nodeConnective as nodeConnective_old,
+  curr.nodeConnective as nodeConnective_new,
+  case
+    when curr.nodeConnective = prev.nodeConnective then 'UNCHANGED'
+    when curr.nodeConnective is null and prev.nodeConnective is not null then 'DELETED'
+    when curr.nodeConnective is not null and prev.nodeConnective is null then 'NEW'
+    else 'CHANGED'
+  end as nodeConnective_status,
+  prev.nodeAttributePathName as nodeAttributePathName_old,
+  curr.nodeAttributePathName as nodeAttributePathName_new,
+  case
+    when curr.nodeAttributePathName = prev.nodeAttributePathName then 'UNCHANGED'
+    when curr.nodeAttributePathName is null and prev.nodeAttributePathName is not null then 'DELETED'
+    when curr.nodeAttributePathName is not null and prev.nodeAttributePathName is null then 'NEW'
+    else 'CHANGED'
+  end as nodeAttributePathName_status,
+  prev.nodeOperator as nodeOperator_old,
+  curr.nodeOperator as nodeOperator_new,
+  case
+    when curr.nodeOperator = prev.nodeOperator then 'UNCHANGED'
+    when curr.nodeOperator is null and prev.nodeOperator is not null then 'DELETED'
+    when curr.nodeOperator is not null and prev.nodeOperator is null then 'NEW'
+    else 'CHANGED'
+  end as nodeOperator_status,
+  prev.nodeValue as nodeValue_old,
+  curr.nodeValue as nodeValue_new,
+  case
+    when curr.nodeValue = prev.nodeValue then 'UNCHANGED'
+    when curr.nodeValue is null and prev.nodeValue is not null then 'DELETED'
+    when curr.nodeValue is not null and prev.nodeValue is null then 'NEW'
+    else 'CHANGED'
+  end as nodeValue_status
+from
+  ${ref('celebrus_config_values')} curr
+full outer join
+  ${ref('celebrus_config_values_snapshot')} prev
+on curr.nodeUuid = prev.nodeUuid
+)
+
+SELECT 
+  * 
+FROM 
+  comparison 
+WHERE
+  nodeUuid_status != 'UNCHANGED' 
+  AND nodeConnective_status != 'UNCHANGED' 
+  AND nodeAttributePathName_status != 'UNCHANGED' 
+  AND nodeOperator_status != 'UNCHANGED' 
+  AND nodeValue_status != 'UNCHANGED'

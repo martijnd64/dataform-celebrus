@@ -1,0 +1,10 @@
+config {
+ name: 'celebrus_config_nodes_snapshot',
+ type: "table",
+ description: "Celebrus configuration export.",
+ uniqueKey: ["uuid", "nodeUuid"],
+ schema: "dataform_intermediate",
+ tags: ['celebrus', 'snapshot']
+}
+
+SELECT * FROM ${constants.DATABASE}.dataform_reporting.celebrus_config_nodes

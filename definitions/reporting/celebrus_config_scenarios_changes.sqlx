@@ -1,0 +1,65 @@
+config {
+ name: 'celebrus_config_scenarios_changes',
+ type: "incremental",
+ description: "Celebrus configuration export.",
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily'],
+}
+
+with comparison as (
+select
+  prev.config as config_old,
+  curr.config as config_new,
+  case
+    when curr.config= prev.config then 'UNCHANGED'
+    when curr.config is null and prev.config is not null then 'DELETED'
+    when curr.config is not null and prev.config is null then 'NEW'
+    else 'CHANGED'
+  end as config_status,
+  coalesce(curr.uuid, prev.uuid) as uuid,
+  case 
+    when curr.uuid is null then 'DELETED'
+    when prev.uuid is null then 'NEW'
+    else 'UNCHANGED'
+  end as uuid_status,
+  prev.name as name_old,
+  curr.name as name_new,
+  case
+    when curr.name= prev.name then 'UNCHANGED'
+    when curr.name is null and prev.name is not null then 'DELETED'
+    when curr.name is not null and prev.name is null then 'NEW'
+    else 'CHANGED'
+  end as name_status,
+  prev.eventType as eventType_old,
+  curr.eventType as eventType_new,
+  case
+    when curr.eventType = prev.eventType then 'UNCHANGED'
+    when curr.eventType is null and prev.eventType is not null then 'DELETED'
+    when curr.eventType is not null and prev.eventType is null then 'NEW'
+    else 'CHANGED'
+  end as eventType_status,
+  prev.partitionType as partitionType_old,
+  curr.partitionType as partitionType_new,
+  case
+    when curr.partitionType = prev.partitionType then 'UNCHANGED'
+    when curr.partitionType is null and prev.partitionType is not null then 'DELETED'
+    when curr.partitionType is not null and prev.partitionType is null then 'NEW'
+    else 'CHANGED'
+  end as partitionType_status
+from
+  ${ref('celebrus_config_scenarios')} curr
+full outer join
+  ${ref('celebrus_config_scenarios_snapshot')} prev
+on curr.uuid = prev.uuid
+)
+
+SELECT 
+  * 
+FROM 
+  comparison 
+WHERE
+  config_status != 'UNCHANGED' 
+  AND uuid_status != 'UNCHANGED' 
+  AND name_status != 'UNCHANGED' 
+  AND eventType_status != 'UNCHANGED' 
+  AND partitionType_status != 'UNCHANGED'

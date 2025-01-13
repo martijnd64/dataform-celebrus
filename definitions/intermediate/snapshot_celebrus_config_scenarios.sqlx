@@ -1,0 +1,13 @@
+config {
+ name: 'celebrus_config_scenarios_snapshot',
+ type: "table",
+ description: "Celebrus configuration export.",
+ uniqueKey: ["uuid"],
+ schema: "dataform_intermediate",
+ tags: ['celebrus', 'snapshot'],
+ bigquery: {
+   clusterBy: ["config"],
+ }
+}
+
+SELECT * FROM ${constants.DATABASE}.dataform_reporting.celebrus_config_scenarios

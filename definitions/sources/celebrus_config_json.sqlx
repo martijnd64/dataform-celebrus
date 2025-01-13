@@ -6,7 +6,8 @@ config {
  tags: ['celebrus', 'daily'],
  bigquery: {
    clusterBy: ["config"],
- }
+ },
+ dependencies: ["celebrus_config_nodes_snapshot", "celebrus_config_scenarios_snapshot", "celebrus_config_values_snapshot"]
 }
 
 ${helpers.getXmlData('AVERO_ACHMEA', false)}

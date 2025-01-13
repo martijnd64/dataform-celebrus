@@ -1,0 +1,63 @@
+config {
+ name: 'celebrus_config_nodes_changes',
+ type: "incremental",
+ description: "Celebrus configuration export.",
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily'],
+}
+
+with comparison as (
+select
+  coalesce(curr.uuid, prev.uuid) as uuid,
+  case 
+    when curr.uuid is null then 'DELETED'
+    when prev.uuid is null then 'NEW'
+    else 'UNCHANGED'
+  end as uuid_status,
+  coalesce(curr.nodeUuid, prev.nodeUuid) as nodeUuid,
+  case 
+    when curr.nodeUuid is null then 'DELETED'
+    when prev.nodeUuid is null then 'NEW'
+    else 'UNCHANGED'
+  end as nodeUuid_status,
+  prev.nodeName as nodeName_old,
+  curr.nodeName as nodeName_new,
+  case
+    when curr.nodeName = prev.nodeName then 'UNCHANGED'
+    when curr.nodeName is null and prev.nodeName is not null then 'DELETED'
+    when curr.nodeName is not null and prev.nodeName is null then 'NEW'
+    else 'CHANGED'
+  end as nodeName_status,
+  prev.nodeEventSource as nodeEventSource_old,
+  curr.nodeEventSource as nodeEventSource_new,
+  case
+    when curr.nodeEventSource = prev.nodeEventSource then 'UNCHANGED'
+    when curr.nodeEventSource is null and prev.nodeEventSource is not null then 'DELETED'
+    when curr.nodeEventSource is not null and prev.nodeEventSource is null then 'NEW'
+    else 'CHANGED'
+  end as nodeEventSource_status,
+  prev.nodeEventType as nodeEventType_old,
+  curr.nodeEventType as nodeEventType_new,
+  case
+    when curr.nodeEventType = prev.nodeEventType then 'UNCHANGED'
+    when curr.nodeEventType is null and prev.nodeEventType is not null then 'DELETED'
+    when curr.nodeEventType is not null and prev.nodeEventType is null then 'NEW'
+    else 'CHANGED'
+  end as nodeEventType_status
+from
+  ${ref('celebrus_config_nodes')} curr
+full outer join
+  ${ref('celebrus_config_nodes_snapshot')} prev
+on curr.uuid = prev.uuid
+)
+
+SELECT 
+  * 
+FROM 
+  comparison 
+WHERE
+  uuid_status != 'UNCHANGED' 
+  AND uuid_status != 'UNCHANGED' 
+  AND nodeName_status != 'UNCHANGED' 
+  AND nodeEventSource_status != 'UNCHANGED' 
+  AND nodeEventType_status != 'UNCHANGED'
