@@ -1,0 +1,38 @@
+config {
+ name: 'celebrus_config_stats',
+ type: "incremental",
+ description: "Celebrus configuration export.",
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily'],
+}
+
+SELECT
+    FORMAT_DATE('%d-%m-%Y', 
+    CASE 
+      WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE()) = 2 -- Monday
+      THEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)  -- Go back 3 days to Friday
+      ELSE DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)  -- Otherwise, just go back 1 day
+    END
+  ) AS full_date,
+    COUNT(DISTINCT uuid) as scenario_count,
+    COUNT(DISTINCT eventType) as evenType_count,
+    COUNT(CASE WHEN eventType = 'Behaviour' THEN 1 END) AS behaviour_count,
+    COUNT(CASE WHEN eventType = 'Advertising' THEN 1 END) AS advertising_count,
+    COUNT(CASE WHEN eventType = 'ContentLoading' THEN 1 END) as contentloading_count,
+    COUNT(CASE WHEN eventType = 'CustomAttribute' THEN 1 END) as customattribute_count,
+    COUNT(CASE WHEN eventType = 'Download' THEN 1 END) as download_count,
+    COUNT(CASE WHEN eventType = 'Error' THEN 1 END) as error_count,
+    COUNT(CASE WHEN eventType = 'FormSuccess' THEN 1 END) as formsuccess_count,
+    COUNT(CASE WHEN eventType = 'FormSubmit' THEN 1 END) as formsubmit_count,
+    COUNT(CASE WHEN eventType = 'Goal' THEN 1 END) as goal_count,
+    COUNT(CASE WHEN eventType = 'InternalSearchNoResults' THEN 1 END) as internalsearchnoresults_count,
+    COUNT(CASE WHEN eventType = 'InternalSearchResults' THEN 1 END) as internalsearchresults_count,
+    COUNT(CASE WHEN eventType = 'InternalSearch' THEN 1 END) as internalsearch_count,
+    COUNT(CASE WHEN eventType = 'LoggedIn' THEN 1 END) as loggedin_count,
+    COUNT(CASE WHEN eventType = 'LoggedOut' THEN 1 END) as loggedout_count,
+    COUNT(CASE WHEN eventType = 'Profile' THEN 1 END) as profile_count,
+    COUNT(CASE WHEN eventType = 'Promotion' OR eventType = 'PromotionDisplay' THEN 1 END) as promotion_count,
+    COUNT(CASE WHEN eventType = 'Purchase' THEN 1 END) as purchase_count,
+    COUNT(CASE WHEN eventType = 'Transaction' THEN 1 END) as transaction_count,
+FROM
+    ${ref('celebrus_config_scenarios')}

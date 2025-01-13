@@ -54,6 +54,7 @@ on curr.uuid = prev.uuid
 )
 
 SELECT 
+  FORMAT_DATE('%d-%m-%Y', DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)) AS full_date,
   * 
 FROM 
   comparison 

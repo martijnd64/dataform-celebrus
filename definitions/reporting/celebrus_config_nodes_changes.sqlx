@@ -51,7 +51,14 @@ full outer join
 on curr.uuid = prev.uuid
 )
 
-SELECT 
+SELECT  
+  FORMAT_DATE('%d-%m-%Y', 
+    CASE 
+      WHEN EXTRACT(DAYOFWEEK FROM CURRENT_DATE()) = 2 -- Monday
+      THEN DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)  -- Go back 3 days to Friday
+      ELSE DATE_SUB(CURRENT_DATE(), INTERVAL 1 DAY)  -- Otherwise, just go back 1 day
+    END
+  ) AS full_date,
   * 
 FROM 
   comparison 
