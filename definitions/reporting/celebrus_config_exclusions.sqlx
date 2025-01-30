@@ -1,0 +1,19 @@
+config {
+ name: 'celebrus_config_exclusions',
+ type: "table",
+ description: "Celebrus configuration export.",
+ schema: "dataform_reporting",
+ tags: ['celebrus', 'daily']
+}
+
+SELECT *
+FROM ${ref('celebrus_config_exclusions_1_no_nesting')}
+UNION ALL
+SELECT *
+FROM ${ref('celebrus_config_exclusions_2_nesting_on_valueconstraint')}
+UNION ALL
+SELECT *
+FROM ${ref('celebrus_config_exclusions_3_nesting_on_matchnode')}
+UNION ALL
+SELECT *
+FROM ${ref('celebrus_config_exclusions_4_nesting_on_all')}
