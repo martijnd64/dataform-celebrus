@@ -1,5 +1,5 @@
 config {
- name: 'celebrus_config_extractors_2_nesting_on_valueconstraint',
+ name: 'celebrus_config_extractors_2_nesting_on_extractor',
  type: "table",
  description: "Celebrus configuration export.",
  schema: "dataform_intermediate",
@@ -14,11 +14,11 @@ WITH prep AS (
     ARRAY_AGG(CONCAT(JSON_VALUE(xml_string, '$.processing.graph.nodeDefinitions.matchNode.uuid'), '~|', 
     JSON_VALUE(nodeArr, '$.outAttributePathName'), '~|', 
     IFNULL(JSON_VALUE(nodeArr, '$.extractionOperator.operator'), ''), '~|', 
-    IFNULL(JSON_VALUE(nodeArr, '$.extractionOperator.value.""'), JSON_QUERY(nodeArr, '$.extractionOperator.value')), '~|', 
+    IFNULL(JSON_VALUE(nodeArr, '$.extractionOperator.value.""'), IFNULL(JSON_QUERY(nodeArr, '$.extractionOperator.value'), '')), '~|', 
     IFNULL(JSON_VALUE(nodeArr, '$.subconstraints.connective'), ''), '~|', 
     IFNULL(JSON_VALUE(nodeArr, '$.subconstraints.valueconstraint.attributePathName'), ''), '~|', 
-    IFNULL(JSON_VALUE(nodeArr, '$.subconstraints.valueconstraint.operator'), '')--, '~|', 
-    --IFNULL(JSON_VALUE(nodeArr, '$.subconstraints.valueconstraint.value.""'), JSON_QUERY(nodeArr, '$.subconstraints.valueconstraint.value'))
+    IFNULL(JSON_VALUE(nodeArr, '$.subconstraints.valueconstraint.operator'), ''), '~|', 
+    IFNULL(JSON_VALUE(nodeArr, '$.subconstraints.valueconstraint.value.""'), IFNULL(JSON_QUERY(nodeArr, '$.subconstraints.valueconstraint.value'), ''))
     ))
   FROM
     UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode.match.extractors.extractor')) AS nodeArr)
@@ -38,16 +38,16 @@ SELECT
   split(nodeAttributePathName, '~|')[offset(4)] as nodeSubconstraints,
   split(nodeAttributePathName, '~|')[offset(5)] as nodeSubAttributePathName,
   split(nodeAttributePathName, '~|')[offset(6)] as nodeSubOperator,
-  --split(nodeAttributePathName, '~|')[offset(7)] as nodeSubValue,
+  split(nodeAttributePathName, '~|')[offset(7)] as nodeSubValue,
   -- Fix to not split the pipes found in the values  
-  /*ARRAY_TO_STRING((
-    SELECT ARRAY_AGG(x) 
-    FROM UNNEST(SPLIT(nodeAttributePathName, '|')) AS x 
-    WITH OFFSET 
-    WHERE OFFSET >= 3
-  ), '|') as nodeValue*/
+  --ARRAY_TO_STRING((
+  --SELECT ARRAY_AGG(x) 
+  --FROM UNNEST(SPLIT(nodeAttributePathName, '|')) AS x 
+  --WITH OFFSET 
+  --WHERE OFFSET >= 3
+  --), '|') as nodeValue
 FROM dataPrep)
 SELECT *
 FROM resultPrep
 WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NULL
---AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeSubValue, '$')) IS NULL
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeSubValue, '$')) IS NULL

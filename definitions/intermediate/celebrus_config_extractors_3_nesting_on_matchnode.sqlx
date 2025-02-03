@@ -11,7 +11,16 @@ WITH prep AS (
   SELECT
  (
   SELECT
-    ARRAY_AGG(CONCAT(JSON_VALUE(nodeArr, '$.uuid'), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.outAttributePathName'), JSON_QUERY(nodeArr, '$.match.extractors.extractor')), '|' ,IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.extractionOperator.operator'), JSON_QUERY(nodeArr, '$.match.extractors.extractor')), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.extractionOperator.value.""'), JSON_QUERY(nodeArr, '$.match.extractors.extractor.extractionOperator.value')), '|', IFNULL(JSON_VALUE(nodeArr, '$.match.exclusionconstraints.exprconstraint.expression'), '')))
+    ARRAY_AGG(CONCAT(
+      JSON_VALUE(nodeArr, '$.uuid'), '~|', 
+      IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.outAttributePathName'), IFNULL(JSON_QUERY(nodeArr, '$.match.extractors.extractor'), '')), '~|',
+      IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.extractionOperator.operator'), ''), '~|', 
+      IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.extractionOperator.value.""'), IFNULL(JSON_QUERY(nodeArr, '$.match.extractors.extractor.extractionOperator.value'), '')), '~|', 
+      IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.subconstraints.connective'), ''), '~|',
+      IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.subconstraints.valueconstraint.attributePathName'), ''), '~|',
+      IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.subconstraints.valueconstraint.operator'), ''), '~|',
+      IFNULL(JSON_VALUE(nodeArr, '$.match.extractors.extractor.subconstraints.valueconstraint.value.""'), IFNULL(JSON_QUERY(nodeArr, '$.match.extractors.extractor.subconstraints.valueconstraint.value'), ''))
+      ))
   FROM
     UNNEST(JSON_QUERY_ARRAY(xml_string, '$.processing.graph.nodeDefinitions.matchNode')) AS nodeArr)
   AS nodeAttributePathName,
@@ -23,21 +32,18 @@ SELECT nodeAttributePathName
 FROM prep, UNNEST (nodeAttributePathName) as nodeAttributePathName
 ), resultPrep AS (
 SELECT 
-  split(nodeAttributePathName, '|')[offset(0)] as nodeUuid,
-  split(nodeAttributePathName, '|')[offset(1)] as nodeConnective,
-  split(nodeAttributePathName, '|')[offset(2)] as nodeAttributePathName,
-  split(nodeAttributePathName, '|')[offset(3)] as nodeOperator,
-  split(nodeAttributePathName, '|')[offset(4)] as nodeValue,
-  split(nodeAttributePathName, '|')[offset(5)] as nodeExpression,
+  split(nodeAttributePathName, '~|')[offset(0)] as nodeUuid,
+  split(nodeAttributePathName, '~|')[offset(1)] as nodeAttributePathName,
+  split(nodeAttributePathName, '~|')[offset(2)] as nodeOperator,
+  split(nodeAttributePathName, '~|')[offset(3)] as nodeValue,
+  split(nodeAttributePathName, '~|')[offset(4)] as nodeSubconstraints,
+  split(nodeAttributePathName, '~|')[offset(5)] as nodeSubAttributePathName,
+  split(nodeAttributePathName, '~|')[offset(6)] as nodeSubOperator,
+  split(nodeAttributePathName, '~|')[offset(7)] as nodeSubValue,
 FROM dataPrep)
 SELECT *
 FROM resultPrep
 WHERE ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeValue, '$')) IS NULL
-AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeOperator, '$')) IS NULL
+AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeSubValue, '$')) IS NULL
 AND ARRAY_LENGTH(JSON_QUERY_ARRAY(nodeAttributePathName, '$')) IS NULL
-AND (nodeExpression IS NOT NULL AND nodeExpression != ''
-    OR nodeValue IS NOT NULL AND nodeValue != ''
-    OR nodeOperator IS NOT NULL AND nodeOperator != ''
-    OR nodeAttributePathName IS NOT NULL AND nodeAttributePathName != ''
-    OR nodeConnective IS NOT NULL AND nodeConnective != ''
-    OR nodeUuid IS NOT NULL AND nodeUuid != '')
+AND nodeAttributePathName IS NOT NULL AND nodeAttributePathName != ''
