@@ -38,3 +38,18 @@ declare({
     schema: constants.DATASET,
     name: constants.XML_PREFIX + constants.XML_ROADGUARD,
 });
+declare({
+    database: constants.DATABASE,
+    schema: constants.DATASET,
+    name: constants.JOURNEY_PREFIX + constants.JOURNEY_VISITS,
+});
+declare({
+    database: constants.DATABASE,
+    schema: constants.DATASET,
+    name: constants.JOURNEY_PREFIX + constants.JOURNEY_PAGE_VISITS,
+});
+declare({
+    database: constants.DATABASE,
+    schema: constants.DATASET,
+    name: constants.JOURNEY_PREFIX + constants.JOURNEY_GOALS,
+});

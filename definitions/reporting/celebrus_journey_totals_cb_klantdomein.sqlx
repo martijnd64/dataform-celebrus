@@ -1,0 +1,54 @@
+config {
+  type: "view",
+  name: "celebrus_journey_totals_cb_klantdomein",
+  schema: "dataform_reporting"
+}
+
+WITH visits_totals AS (
+  SELECT
+    full_date,
+    COUNT(DISTINCT cookie_id) AS number_of_visitors,
+    COUNT(DISTINCT visit_key) AS number_of_sessions
+  FROM
+    ${ref('celebrus_journey_visits')} v
+  GROUP BY
+    full_date
+),
+page_visits_totals AS (
+  SELECT
+    full_date,
+    COUNT(DISTINCT page_instance_key) AS total_page_visits
+  FROM
+    ${ref('celebrus_journey_page_visits')} pv
+  GROUP BY
+    full_date
+),
+
+goals_totals AS (
+  SELECT
+    full_date,
+    COUNT(DISTINCT visit_key) AS total_goals,
+    COUNT(DISTINCT cookie_id) AS total_goals_visitors
+  FROM
+    ${ref('celebrus_journey_goals')} g
+  GROUP BY
+    full_date
+)
+
+SELECT
+  v.full_date,
+  v.number_of_visitors,
+  v.number_of_sessions,
+  p.total_page_visits,
+  g.total_goals,
+  g.total_goals_visitors
+FROM
+  visits_totals v
+LEFT JOIN
+  page_visits_totals p
+ON
+  v.full_date = p.full_date
+LEFT JOIN
+  goals_totals g
+ON
+  v.full_date = g.full_date

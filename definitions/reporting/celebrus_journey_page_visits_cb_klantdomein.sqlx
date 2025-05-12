@@ -1,0 +1,35 @@
+config {
+  type: "view",
+  name: "celebrus_journey_page_visits_cb_klantdomein",
+  schema: "dataform_reporting"
+}
+
+SELECT
+  pv.full_date,
+  pv.page_hostname,
+  pv.page_path,
+  --pv.page_query,
+  v.browser_family,
+  v.device,
+  v.device_type,
+  v.os,
+  COUNT(DISTINCT pv.cookie_id) AS number_of_visitors,
+  COUNT(DISTINCT pv.visit_key) AS number_of_sessions,
+  COUNT(DISTINCT pv.page_instance_key) AS number_of_page_visits
+FROM
+  ${ref('celebrus_journey_page_visits')} pv
+JOIN
+  ${ref('celebrus_journey_visits')} v
+ON
+  pv.full_date = v.full_date
+  AND pv.cookie_id = v.cookie_id
+  AND pv.visit_key = v.visit_key
+GROUP BY
+  pv.full_date,
+  pv.page_hostname,
+  pv.page_path,
+  --pv.page_query,
+  v.browser_family,
+  v.device,
+  v.device_type,
+  v.os
