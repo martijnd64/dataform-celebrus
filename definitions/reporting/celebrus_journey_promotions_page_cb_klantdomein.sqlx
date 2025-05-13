@@ -1,0 +1,33 @@
+config {
+  type: "view",
+  name: "celebrus_journey_promotions_page_cb_klantdomein",
+  schema: "dataform_reporting"
+}
+
+SELECT
+  p.full_date,
+  p.name,
+  p.type,
+  p.creative,
+  p.placement,
+  pv.page_hostname,
+  pv.page_path,
+  COUNT(DISTINCT p.cookie_id) AS number_of_visitors,
+  COUNT(DISTINCT p.visit_key) AS number_of_goals
+FROM
+  ${ref('celebrus_journey_promotions')} p
+JOIN
+  ${ref('celebrus_journey_page_visits')} pv
+ON
+  p.full_date = pv.full_date
+  AND p.cookie_id = pv.cookie_id
+  AND p.visit_key = pv.visit_key
+  AND p.page_instance_key = pv.page_instance_key
+GROUP BY
+  p.full_date,
+  p.name,
+  p.type,
+  p.creative,
+  p.placement,
+  pv.page_hostname,
+  pv.page_path

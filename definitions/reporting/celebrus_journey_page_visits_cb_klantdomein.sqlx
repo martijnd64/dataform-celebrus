@@ -10,7 +10,7 @@ SELECT
   pv.page_path,
   --pv.page_query,
   v.browser_family,
-  v.device,
+  --v.device,
   v.device_type,
   v.os,
   COUNT(DISTINCT pv.cookie_id) AS number_of_visitors,
@@ -30,6 +30,6 @@ GROUP BY
   pv.page_path,
   --pv.page_query,
   v.browser_family,
-  v.device,
+  --v.device,
   v.device_type,
   v.os

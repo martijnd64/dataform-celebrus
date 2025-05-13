@@ -1,0 +1,21 @@
+config {
+  type: "view",
+  name: "celebrus_journey_visits_cb_klantdomein",
+  schema: "dataform_reporting"
+}
+
+SELECT
+  full_date,
+  browser_family,
+  device_type,
+  os,
+  COUNT(DISTINCT cookie_id) AS number_of_visitors,
+  COUNT(DISTINCT visit_key) AS number_of_sessions
+FROM
+  ${ref('celebrus_journey_visits')}
+GROUP BY
+  full_date,
+  browser_family,
+  device,
+  device_type,
+  os

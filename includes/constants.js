@@ -13,6 +13,7 @@ const JOURNEY_PREFIX = 'celebrus_journey_';
 const JOURNEY_VISITS = 'visits';
 const JOURNEY_PAGE_VISITS = 'page_visits';
 const JOURNEY_GOALS = 'goals';
+const JOURNEY_PROMOTIONS = 'promotions';
 module.exports = {
     DATABASE,
     DATASET,
@@ -28,5 +29,6 @@ module.exports = {
     JOURNEY_PREFIX,
     JOURNEY_VISITS,
     JOURNEY_PAGE_VISITS,
-    JOURNEY_GOALS
+    JOURNEY_GOALS,
+    JOURNEY_PROMOTIONS
 }

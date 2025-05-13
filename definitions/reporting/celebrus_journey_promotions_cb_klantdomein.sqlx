@@ -1,0 +1,35 @@
+config {
+  type: "view",
+  name: "celebrus_journey_promotions_cb_klantdomein",
+  schema: "dataform_reporting"
+}
+
+SELECT
+  p.full_date,
+  p.name,
+  p.type,
+  p.creative,
+  p.placement,
+  v.browser_family,
+  v.device_type,
+  v.os,
+  COUNT(DISTINCT p.cookie_id) AS number_of_visitors,
+  COUNT(DISTINCT p.visit_key) AS number_of_promotions
+FROM
+  ${ref('celebrus_journey_promotions')} p
+JOIN
+  ${ref('celebrus_journey_visits')} v
+ON
+  p.full_date = v.full_date
+  AND p.cookie_id = v.cookie_id
+  AND p.visit_key = v.visit_key
+GROUP BY
+  p.full_date,
+  p.name,
+  p.type,
+  p.creative,
+  p.placement,
+  v.browser_family,
+  v.device,
+  v.device_type,
+  v.os
