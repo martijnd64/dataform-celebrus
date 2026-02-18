@@ -1,6 +1,6 @@
 config {
   type: "view",
-  name: "celebrus_journey_totals_cb_klantdomein",
+  name: "celebrus_journey_totals_report",
   schema: "dataform_reporting"
 }
 
@@ -8,31 +8,37 @@ WITH visits_totals AS (
   SELECT
     full_date,
     COUNT(DISTINCT cookie_id) AS number_of_visitors,
-    COUNT(DISTINCT visit_key) AS number_of_sessions
+    COUNT(DISTINCT visit_key) AS number_of_sessions,
+    brand
   FROM
     ${ref('celebrus_journey_visits')} v
   GROUP BY
-    full_date
+    full_date,
+    brand
 ),
 page_visits_totals AS (
   SELECT
     full_date,
-    COUNT(DISTINCT page_instance_key) AS total_page_visits
+    COUNT(DISTINCT page_instance_key) AS total_page_visits,
+    brand
   FROM
     ${ref('celebrus_journey_page_visits')} pv
   GROUP BY
-    full_date
+    full_date,
+    brand
 ),
 
 goals_totals AS (
   SELECT
     full_date,
     COUNT(DISTINCT visit_key) AS total_goals,
-    COUNT(DISTINCT cookie_id) AS total_goals_visitors
+    COUNT(DISTINCT cookie_id) AS total_goals_visitors,
+    brand
   FROM
     ${ref('celebrus_journey_goals')} g
   GROUP BY
-    full_date
+    full_date,
+    brand
 )
 
 SELECT
@@ -41,14 +47,17 @@ SELECT
   v.number_of_sessions,
   p.total_page_visits,
   g.total_goals,
-  g.total_goals_visitors
+  g.total_goals_visitors,
+  v.brand
 FROM
   visits_totals v
 LEFT JOIN
   page_visits_totals p
 ON
   v.full_date = p.full_date
+  AND v.brand = p.brand
 LEFT JOIN
   goals_totals g
 ON
   v.full_date = g.full_date
+  AND v.brand = g.brand

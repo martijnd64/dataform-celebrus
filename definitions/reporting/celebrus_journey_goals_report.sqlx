@@ -1,6 +1,6 @@
 config {
   type: "view",
-  name: "celebrus_journey_goals_cb_klantdomein",
+  name: "celebrus_journey_goals_report",
   schema: "dataform_reporting"
 }
 
@@ -11,7 +11,8 @@ SELECT
   v.device_type,
   v.os,
   COUNT(DISTINCT g.cookie_id) AS number_of_visitors,
-  COUNT(DISTINCT g.visit_key) AS number_of_goals
+  COUNT(DISTINCT g.visit_key) AS number_of_goals,
+  g.brand
 FROM
   ${ref('celebrus_journey_goals')} g
 JOIN
@@ -20,10 +21,12 @@ ON
   g.full_date = v.full_date
   AND g.cookie_id = v.cookie_id
   AND g.visit_key = v.visit_key
+  AND g.brand = v.brand
 GROUP BY
   g.full_date,
   g.goal_name,
   v.browser_family,
   v.device,
   v.device_type,
-  v.os
+  v.os,
+  g.brand

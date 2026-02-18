@@ -1,6 +1,6 @@
 config {
   type: "view",
-  name: "celebrus_journey_page_visits_cb_klantdomein",
+  name: "celebrus_journey_page_visits_report",
   schema: "dataform_reporting"
 }
 
@@ -15,7 +15,8 @@ SELECT
   v.os,
   COUNT(DISTINCT pv.cookie_id) AS number_of_visitors,
   COUNT(DISTINCT pv.visit_key) AS number_of_sessions,
-  COUNT(DISTINCT pv.page_instance_key) AS number_of_page_visits
+  COUNT(DISTINCT pv.page_instance_key) AS number_of_page_visits,
+  pv.brand
 FROM
   ${ref('celebrus_journey_page_visits')} pv
 JOIN
@@ -24,6 +25,7 @@ ON
   pv.full_date = v.full_date
   AND pv.cookie_id = v.cookie_id
   AND pv.visit_key = v.visit_key
+  AND pv.brand = v.brand
 GROUP BY
   pv.full_date,
   pv.page_hostname,
@@ -32,4 +34,5 @@ GROUP BY
   v.browser_family,
   --v.device,
   v.device_type,
-  v.os
+  v.os,
+  pv.brand
