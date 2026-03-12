@@ -1,0 +1,33 @@
+config { 
+    type: "view",
+    name: "celebrus_journey_funnels",
+    schema: "dataform_reporting"
+}
+
+SELECT DISTINCT
+  pv.full_date,
+  pv.page_hostname,
+  pv.page_path,
+  v.browser_family,
+  v.device_type,
+  v.os,
+  pv.cookie_id,
+  pv.visit_key,
+  pv.page_instance_key,
+  pv.brand,
+  f.step,
+  f.step_order,
+  f.funnel
+FROM
+  ${ref('celebrus_journey_page_visits')} pv
+JOIN
+  ${ref('celebrus_journey_visits')} v
+  ON pv.full_date = v.full_date
+ AND pv.cookie_id = v.cookie_id
+ AND pv.visit_key = v.visit_key
+ AND pv.brand = v.brand
+JOIN
+  ${ref('celebrus_journey_funnels_external')} f
+  ON pv.page_hostname = f.page_hostname
+ AND pv.page_path     = f.page_path
+ AND pv.brand         = f.brand
