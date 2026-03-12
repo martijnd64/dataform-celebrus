@@ -14,6 +14,7 @@ const JOURNEY_VISITS = 'visits';
 const JOURNEY_PAGE_VISITS = 'page_visits';
 const JOURNEY_GOALS = 'goals';
 const JOURNEY_PROMOTIONS = 'promotions';
+const JOURNEY_FUNNELS_SETTINGS = 'funnels_settings';
 module.exports = {
     DATABASE,
     DATASET,
@@ -30,5 +31,6 @@ module.exports = {
     JOURNEY_VISITS,
     JOURNEY_PAGE_VISITS,
     JOURNEY_GOALS,
-    JOURNEY_PROMOTIONS
+    JOURNEY_PROMOTIONS,
+    JOURNEY_FUNNELS_SETTINGS
 }

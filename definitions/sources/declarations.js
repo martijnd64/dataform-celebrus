@@ -58,3 +58,8 @@ declare({
     schema: constants.DATASET,
     name: constants.JOURNEY_PREFIX + constants.JOURNEY_PROMOTIONS,
 });
+declare({
+    database: constants.DATABASE,
+    schema: constants.DATASET,
+    name: constants.JOURNEY_PREFIX + constants.JOURNEY_FUNNELS_SETTINGS,
+});

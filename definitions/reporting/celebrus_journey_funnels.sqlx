@@ -27,7 +27,7 @@ JOIN
  AND pv.visit_key = v.visit_key
  AND pv.brand = v.brand
 JOIN
-  ${ref('celebrus_journey_funnels_external')} f
+  ${ref('celebrus_journey_funnels_settings')} f
   ON pv.page_hostname = f.page_hostname
  AND pv.page_path     = f.page_path
  AND pv.brand         = f.brand
